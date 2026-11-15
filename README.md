@@ -1,59 +1,66 @@
-# Claude Desktop na Fedorze przez Flatpak
+# Claude Desktop for Fedora
 
-Społecznościowa receptura dla **x86_64**. Każdy fork może prowadzić własne podpisane źródło Flatpaka na GitHub Pages. Przy instalacji i aktualizacji Flatpak pobiera pakiet Claude Desktop bezpośrednio z serwera Anthropic. Na Pages trafiają launcher, środowisko bazowe aplikacji i metadane potrzebne do instalacji.
+Install Claude Desktop on **Fedora x86_64** from this community-maintained Flatpak remote. Anyone can use the public remote without a GitHub account or a fork. GitHub Pages hosts the launcher, Electron base files, and signed package metadata. During installation and updates, Flatpak downloads the Claude Desktop package directly from Anthropic and verifies its SHA-256 checksum.
 
-## Uruchom własne źródło
+## Install and run
 
-1. Kliknij **Fork** i utwórz publiczny fork na swoim koncie. W jego zakładce **Actions** włącz workflow, jeśli GitHub wyświetla przycisk aktywacji.
-2. Na Fedorze zainstaluj potrzebne narzędzia i zaloguj się do GitHuba. Do konfiguracji wymagane są uprawnienia administratora forka.
+Add Flathub for the runtime, then install Claude Desktop from this project's signed remote.
+
+```bash
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak remote-add --user --if-not-exists claude-personal https://jakubiszon26.github.io/claude-flatpak/claude.flatpakrepo
+flatpak install --user claude-personal com.anthropic.Claude
+flatpak run com.anthropic.Claude
+```
+
+If you previously installed a standalone bundle with the same app ID, run `flatpak install --user --reinstall claude-personal com.anthropic.Claude` after adding the remote. To check which remote supplies updates, run `flatpak info --user --show-origin com.anthropic.Claude`. The expected origin is `claude-personal`.
+
+## Update
+
+```bash
+flatpak update --user com.anthropic.Claude
+```
+
+GitHub Actions checks Anthropic's signed APT index daily at 05:27 UTC. It rebuilds the Flatpak when the upstream package or the repository revision changes. Before publishing, the runner installs the app from a signed test remote and checks that the launcher and executable are present.
+
+## Host your own signed remote
+
+Fork this repository if you want to control the packaging and sign updates with your own key.
+
+1. Create a public fork. Open **Actions** in your fork and enable workflows if prompted.
+2. Install the setup tools on Fedora and sign in with a GitHub account that has admin access to the fork.
 
    ```bash
    sudo dnf install gh git gnupg2 flatpak
    gh auth login
    ```
 
-3. Sklonuj **swój** fork. Zastąp `TWOJ_LOGIN` własnym loginem i użyj nazwy wybranej przy forkowaniu.
+3. Clone your fork and run the setup script. Replace `YOUR_USERNAME` with your GitHub username and adjust the repository name if you renamed the fork.
 
    ```bash
-   gh repo clone TWOJ_LOGIN/claude-flatpak
+   gh repo clone YOUR_USERNAME/claude-flatpak
    cd claude-flatpak
    bash scripts/setup.sh
    ```
 
-   Skrypt przełącza Pages na wdrożenia z GitHub Actions, generuje osobny klucz podpisujący i zapisuje go w sekrecie Actions `FLATPAK_GPG_PRIVATE_KEY`. Wypisuje odcisk klucza publicznego. Przy ponownym uruchomieniu zachowuje istniejący sekret. Klucz prywatny po konfiguracji pozostaje w sekrecie GitHuba. Jeśli potrzebujesz własnej kopii zapasowej, przygotuj dedykowany klucz podpisujący bez hasła i ustaw ten sekret w formacie ASCII armor przed uruchomieniem skryptu.
+   The script configures Pages to deploy from Actions, generates a dedicated signing key, prints its public fingerprint, and stores the private key in the Actions secret `FLATPAK_GPG_PRIVATE_KEY`. Running setup again preserves the existing secret. If you need a backup, generate and back up your own dedicated signing key first, then set the secret to its ASCII-armored private key before running setup. The workflow requires a key without a passphrase.
 
-4. Poczekaj, aż oba zadania **build** i **publish** zakończą się pomyślnie. W podsumowaniu budowy znajdziesz adres `claude.flatpakrepo` i odcisk klucza. Każdy fork ma swój adres oraz klucz.
+4. Wait for both **build** and **publish** to succeed. The build summary lists your fork's `claude.flatpakrepo` URL and signing key fingerprint. Add your fork under a distinct remote name and install from it. For example, with the default Pages address:
 
-## Dodaj źródło na Fedorze
+   ```bash
+   flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+   flatpak remote-add --user claude-fork https://YOUR_USERNAME.github.io/claude-flatpak/claude.flatpakrepo
+   flatpak install --user claude-fork com.anthropic.Claude
+   ```
 
-Ustaw `REMOTE_URL` na adres z podsumowania swojego workflow. Przy standardowych ustawieniach Pages wygląda on tak:
+To force a rebuild, choose **Run workflow** in the **Actions** tab. GitHub may disable scheduled workflows after 60 days of inactivity in a public repository. You can re-enable the workflow in **Actions** and pull packaging changes from upstream with **Sync fork**.
 
-```bash
-REMOTE_URL=https://TWOJ_LOGIN.github.io/claude-flatpak/claude.flatpakrepo
-flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-flatpak remote-add --user claude-personal "$REMOTE_URL"
-flatpak install --user claude-personal com.anthropic.Claude
-flatpak run com.anthropic.Claude
-```
+## Permissions and compatibility
 
-Jeżeli masz już aplikację o tym samym identyfikatorze z wcześniejszego bundla, po dodaniu nowego źródła wykonaj `flatpak install --user --reinstall claude-personal com.anthropic.Claude`. Sprawdź źródło poleceniem `flatpak info --user --show-origin com.anthropic.Claude` — powinno pokazać `claude-personal`.
+The app has network access, can communicate with the system credential store, and can access host files with your user's permissions through `--filesystem=host`. It runs inside the Flatpak environment, so tools installed on Fedora with DNF may require additional integration. The packaging does not configure QEMU/KVM for Cowork. Anthropic officially supports Claude Desktop on Debian-based Linux distributions.
 
-## Aktualizacje
+## References
 
-Codziennie o 05:27 UTC workflow sprawdza podpisany indeks APT Anthropic. Nowy pakiet lub zmiana rewizji receptury powoduje przebudowę. Ręczny **Run workflow** wymusza przebudowę. Przed publikacją runner instaluje aplikację z podpisanego repozytorium testowego i sprawdza, czy launcher oraz program są dostępne. Na Fedorze pobierzesz aktualizację zwykłym poleceniem:
-
-```bash
-flatpak update --user com.anthropic.Claude
-```
-
-GitHub może wyłączyć harmonogram po 60 dniach bez aktywności w publicznym repozytorium. Można go wznowić w zakładce **Actions**. Zmiany samej receptury z projektu nadrzędnego pobieraj przez **Sync fork**.
-
-## Dostęp aplikacji
-
-Manifest przyznaje dostęp do sieci, systemowego magazynu poświadczeń i plików hosta przez `--filesystem=host`, z prawami użytkownika. Aplikacja nadal korzysta ze środowiska Flatpaka. Narzędzia Fedory zainstalowane przez DNF mogą wymagać osobnej integracji. Receptura nie konfiguruje QEMU/KVM dla Cowork. Anthropic oficjalnie wspiera linuksowy Desktop na dystrybucjach opartych na Debianie.
-
-## Źródła
-
-- [Pakiet APT, odcisk klucza i wymagania Claude Desktop](https://code.claude.com/docs/en/desktop-linux)
-- [Pierwotna receptura Gordona Messmera](https://github.com/gordonmessmer/com.anthropic.Claude)
-- [Repozytoria i klucze Flatpaka](https://docs.flatpak.org/en/latest/hosting-a-repository.html)
+- [Anthropic's Linux requirements, APT repository, and signing key fingerprint](https://code.claude.com/docs/en/desktop-linux)
+- [Gordon Messmer's original Flatpak packaging](https://github.com/gordonmessmer/com.anthropic.Claude)
+- [Hosting and signing a Flatpak repository](https://docs.flatpak.org/en/latest/hosting-a-repository.html)
