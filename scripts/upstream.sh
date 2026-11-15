@@ -14,7 +14,7 @@ source_file=/etc/apt/sources.list.d/claude-build.list
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/claude-build.asc] $base/apt/stable stable main" | sudo tee "$source_file" >/dev/null
 # Isolate the package index so only this repository can supply the candidate.
 options=(-o "Dir::Etc::sourcelist=$source_file" -o Dir::Etc::sourceparts=-)
-sudo apt-get "${options[@]}" -o APT::Update::Error-Mode=any update
+sudo apt-get "${options[@]}" -o APT::Get::List-Cleanup=false -o APT::Update::Error-Mode=any update
 version=$(LC_ALL=C apt-cache "${options[@]}" policy claude-desktop:amd64 | awk '/Candidate:/ {print $2}')
 [[ "$version" =~ ^[0-9][0-9A-Za-z.+~-]*$ ]]
 echo "version=$version" >> "$GITHUB_OUTPUT"
