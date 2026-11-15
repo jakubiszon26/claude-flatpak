@@ -1,0 +1,76 @@
+name: Claude Flatpak Remote
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '27 5 * * *'
+permissions: {}
+concurrency:
+  group: flatpak-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: read
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/configure-pages@v5
+        id: pages
+      - name: Read signed APT metadata
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-yaml
+          PATH="/usr/bin:$PATH" bash scripts/upstream.sh
+      - id: check
+        env:
+          PAGES_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          sha256sum build-manifest.json | cut -d' ' -f1 > "$RUNNER_TEMP/build-id"
+          echo "$GITHUB_SHA" >> "$RUNNER_TEMP/build-id"
+          status=$(curl --retry 3 -sSL -o "$RUNNER_TEMP/previous" -w '%{http_code}' "${PAGES_URL%/}/build-id")
+          case "$status" in 200|404) ;; *) exit 1 ;; esac
+          if [[ "$GITHUB_EVENT_NAME" == schedule && "$status" == 200 ]] && cmp -s "$RUNNER_TEMP/build-id" "$RUNNER_TEMP/previous"; then
+            echo changed=false >> "$GITHUB_OUTPUT"
+          else
+            echo changed=true >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.check.outputs.changed == 'true'
+        run: |
+          sudo apt-get install -y flatpak flatpak-builder dbus-daemon
+          # Allow bubblewrap namespaces on this ephemeral Ubuntu Actions runner.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - if: steps.check.outputs.changed == 'true'
+        name: Sign and test remote
+        env:
+          PAGES_URL: ${{ steps.pages.outputs.base_url }}
+          SIGNING_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+        run: |
+          export GNUPGHOME=$(mktemp -d)
+          trap 'gpgconf --kill all; rm -rf "$GNUPGHOME"' EXIT
+          if [[ -z "$SIGNING_KEY" ]]; then echo 'Set FLATPAK_GPG_PRIVATE_KEY (see README).' >&2; exit 1; fi
+          gpg --batch --import <<< "$SIGNING_KEY"
+          unset SIGNING_KEY
+          dbus-run-session -- bash scripts/build.sh
+      - if: steps.check.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+  publish:
+    needs: build
+    if: needs.build.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

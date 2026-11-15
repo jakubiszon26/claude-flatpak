@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+# Flatpak starts this script in the writable extra-data directory.
+member=$(bsdtar -tf claude.deb | awk '/^data\.tar(\.(xz|zst|gz|bz2))?$/ {print}')
+[[ -n "$member" && "$member" != *$'\n'* ]]
+mkdir payload
+bsdtar -xOf claude.deb "$member" | bsdtar -xf - -C payload --no-same-owner
+test -x payload/usr/lib/claude-desktop/claude-desktop
+mv payload/usr/lib/claude-desktop .
+rm -r payload claude.deb

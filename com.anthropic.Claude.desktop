@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Claude Desktop
+Comment=Unofficial Flatpak for Claude Desktop
+Exec=claude-desktop %U
+Icon=applications-internet
+Terminal=false
+Categories=Network;
+MimeType=x-scheme-handler/claude;
