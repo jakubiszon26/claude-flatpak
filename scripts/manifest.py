@@ -1,4 +1,11 @@
-"""Render the build manifest using a record from the authenticated APT index."""
+"""Render build-manifest.json from the packaging manifest.
+
+Usage: manifest.py APT_RECORD_FILE VERSION
+
+Adds an extra-data source that points at Anthropic's own download server, using
+the file name, checksum, and size from the authenticated APT index. Flatpak
+then fetches and verifies the package on the user's machine at install time.
+"""
 import json
 import re
 import sys
@@ -11,14 +18,17 @@ record = Parser().parsestr(Path(sys.argv[1]).read_text().split("\n\n")[0])
 if (record["Package"], record["Architecture"], record["Version"]) != (
     "claude-desktop", "amd64", sys.argv[2]
 ):
-    raise SystemExit("Unexpected APT record")
+    raise SystemExit(
+        "The APT record is not claude-desktop/amd64 at the expected version: "
+        f"{record['Package']} {record['Architecture']} {record['Version']}"
+    )
 filename = record["Filename"] or ""
 if not re.fullmatch(r"pool/(?:[\w.+~-]+/)*claude-desktop_[\w.+~-]+_amd64\.deb", filename):
-    raise SystemExit("Unexpected APT filename")
+    raise SystemExit(f"Unexpected package path in the APT index: {filename!r}")
 checksum = record["SHA256"] or ""
-size = int(record["Size"])
+size = int(record["Size"] or 0)
 if not re.fullmatch("[0-9a-f]{64}", checksum) or size <= 0:
-    raise SystemExit("Invalid package checksum or size")
+    raise SystemExit("The APT index has no valid SHA-256 checksum or size for the package")
 manifest = yaml.safe_load(Path("com.anthropic.Claude.yaml").read_text())
 manifest["modules"][0]["sources"].append({
     "type": "extra-data", "filename": "claude.deb",

@@ -1,10 +1,33 @@
 #!/bin/bash
+# Runs on the user's machine during install and update, inside the writable
+# /app/extra directory, right after Flatpak has downloaded and checksummed
+# claude.deb from Anthropic. Nothing unpacked here is ever redistributed.
 set -euo pipefail
-# Flatpak starts this script in the writable extra-data directory.
-member=$(bsdtar -tf claude.deb | awk '/^data\.tar(\.(xz|zst|gz|bz2))?$/ {print}')
-[[ -n "$member" && "$member" != *$'\n'* ]]
+
+die() {
+  echo "claude-flatpak: $*" >&2
+  exit 1
+}
+
+[[ -f claude.deb ]] || die "claude.deb is missing from the extra-data directory."
+
+member=$(bsdtar -tf claude.deb 2>/dev/null | awk '/^data\.tar(\.(xz|zst|gz|bz2))?$/ {print}') || true
+[[ -n "$member" && "$member" != *$'\n'* ]] ||
+  die "claude.deb has an unexpected layout (no single data.tar member)."
+
 mkdir payload
-bsdtar -xOf claude.deb "$member" | bsdtar -xf - -C payload --no-same-owner
-test -x payload/usr/lib/claude-desktop/claude-desktop
+bsdtar -xOf claude.deb "$member" | bsdtar -xf - -C payload --no-same-owner ||
+  die "Could not unpack the Claude Desktop package."
+[[ -x payload/usr/lib/claude-desktop/claude-desktop ]] ||
+  die "The package does not contain usr/lib/claude-desktop/claude-desktop. Its layout may have changed; please report this at the claude-flatpak issue tracker."
 mv payload/usr/lib/claude-desktop .
+
+# Flatpak exports files placed in extra/export, as long as they are named
+# after the app ID. This gives the app its real icon without shipping it.
+for icon in payload/usr/share/icons/hicolor/*/apps/claude-desktop.png; do
+  [[ -f "$icon" ]] || continue
+  size=$(basename "$(dirname "$(dirname "$icon")")")
+  install -Dm644 "$icon" "export/share/icons/hicolor/$size/apps/com.anthropic.Claude.png"
+done
+
 rm -r payload claude.deb

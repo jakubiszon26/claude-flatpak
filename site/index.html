@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Desktop for Linux (unofficial Flatpak)</title>
+<meta name="description" content="Install Claude Desktop on any x86_64 Linux distribution with Flatpak. Community packaging with automatic updates.">
+<style>
+  :root {
+    --bg: #faf9f6; --surface: #ffffff; --text: #1d1c1a; --muted: #66635c;
+    --border: #e2dfd7; --accent: #2f5fd0; --accent-text: #ffffff; --code-bg: #f1efe9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17171a; --surface: #202024; --text: #ecebe7; --muted: #a3a09a;
+      --border: #34343a; --accent: #8fb0ff; --accent-text: #10131c; --code-bg: #2a2a30;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Cantarell, "Noto Sans", sans-serif;
+  }
+  main { max-width: 44rem; margin: 0 auto; padding: 3.5rem 1rem 3rem; }
+  h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); line-height: 1.15; margin: 0 0 .75rem; letter-spacing: -.02em; }
+  h2 { font-size: 1.15rem; margin: 2.75rem 0 .75rem; }
+  p { margin: 0 0 1rem; }
+  .lead { font-size: 1.1rem; color: var(--muted); }
+  .tag {
+    display: inline-block; margin-bottom: 1.25rem; padding: .15rem .6rem;
+    border: 1px solid var(--border); border-radius: 999px; font-size: .8rem; color: var(--muted);
+  }
+  a { color: var(--accent); }
+  .actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin: 1.75rem 0 .5rem; }
+  .button {
+    display: inline-block; padding: .7rem 1.25rem; border-radius: .6rem; font-weight: 600;
+    background: var(--accent); color: var(--accent-text); text-decoration: none;
+  }
+  .button:hover { filter: brightness(1.08); }
+  .hint { font-size: .9rem; color: var(--muted); }
+  .command {
+    display: flex; gap: .5rem; align-items: flex-start; margin: 0 0 1rem; padding: .75rem .75rem .75rem 1rem;
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: .6rem;
+  }
+  .command code { flex: 1; min-width: 0; overflow-x: auto; white-space: pre; padding: .15rem 0; }
+  code { font: .875rem/1.5 ui-monospace, "SF Mono", "Cascadia Code", "DejaVu Sans Mono", monospace; }
+  p code, li code, dd code { background: var(--code-bg); padding: .1rem .35rem; border-radius: .3rem; overflow-wrap: anywhere; }
+  .command button {
+    flex: none; padding: .3rem .7rem; border: 1px solid var(--border); border-radius: .4rem;
+    background: var(--surface); color: var(--text); font: inherit; font-size: .8rem; cursor: pointer;
+  }
+  .command button:hover { border-color: var(--accent); }
+  ul { margin: 0 0 1rem; padding-left: 1.2rem; }
+  li { margin-bottom: .4rem; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: .4rem 1.25rem; margin: 0; }
+  dt { color: var(--muted); }
+  dd { margin: 0; min-width: 0; }
+  @media (max-width: 30rem) { dl { grid-template-columns: 1fr; gap: 0; } dd { margin-bottom: .6rem; } }
+  footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--border); font-size: .875rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <span class="tag">Unofficial community packaging</span>
+  <h1>Claude Desktop for Linux, as a Flatpak</h1>
+  <p class="lead">Works on Fedora, openSUSE, Arch, and any other x86_64 distribution with Flatpak. Updates arrive automatically, usually within a day of Anthropic's release.</p>
+
+  <div class="actions">
+    <a class="button" href="claude-desktop.flatpakref">Install Claude Desktop</a>
+    <span class="hint">Opens in GNOME Software or KDE Discover.</span>
+  </div>
+
+  <h2>Or install from a terminal</h2>
+  <div class="command"><code>flatpak install --user @PAGES_URL@/claude-desktop.flatpakref</code><button type="button">Copy</button></div>
+  <p>Then start Claude from your application menu, or run:</p>
+  <div class="command"><code>flatpak run com.anthropic.Claude</code><button type="button">Copy</button></div>
+  <p class="hint">No Flatpak yet? Follow the <a href="https://flatpak.org/setup/">setup guide for your distribution</a> first.</p>
+
+  <h2>Good to know</h2>
+  <ul>
+    <li><strong>The app comes from Anthropic.</strong> This site hosts only a small launcher. During installation, Flatpak downloads Claude Desktop directly from Anthropic's servers and verifies its checksum.</li>
+    <li><strong>It is not sandboxed from your files.</strong> Claude Code needs your projects and tools, so the app can read and write your files and run programs installed on your system. The <a href="https://github.com/@REPO@#permissions">README</a> explains how to restrict this.</li>
+    <li><strong>Not supported by Anthropic.</strong> Anthropic officially supports Claude Desktop on Debian-based distributions. Report packaging problems <a href="https://github.com/@REPO@/issues">on GitHub</a>.</li>
+  </ul>
+
+  <h2>Current build</h2>
+  <dl>
+    <dt>Claude Desktop</dt><dd>@VERSION@</dd>
+    <dt>Published</dt><dd>@UPDATED@</dd>
+    <dt>Signing key</dt><dd><code>@FINGERPRINT@</code></dd>
+    <dt>Remote</dt><dd><a href="claude.flatpakrepo">claude.flatpakrepo</a></dd>
+  </dl>
+
+  <footer>
+    <p>Packaging source and documentation: <a href="https://github.com/@REPO@">github.com/@REPO@</a>.</p>
+    <p>Claude is a trademark of Anthropic PBC. This project is not affiliated with, endorsed by, or supported by Anthropic.</p>
+  </footer>
+</main>
+<script>
+  document.querySelectorAll('.command button').forEach(function (button) {
+    button.addEventListener('click', function () {
+      navigator.clipboard.writeText(button.previousElementSibling.textContent).then(function () {
+        button.textContent = 'Copied';
+        setTimeout(function () { button.textContent = 'Copy'; }, 1500);
+      });
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-name: Claude Flatpak Remote
+name: Build and publish
 on:
   workflow_dispatch:
   schedule:
@@ -23,41 +23,52 @@ jobs:
       - uses: actions/configure-pages@v5
         id: pages
       - name: Read signed APT metadata
+        id: upstream
         run: |
           sudo apt-get update
           sudo apt-get install -y python3-yaml
           PATH="/usr/bin:$PATH" bash scripts/upstream.sh
-      - id: check
+      - name: Check whether a rebuild is needed
+        id: check
         env:
           PAGES_URL: ${{ steps.pages.outputs.base_url }}
         run: |
           sha256sum build-manifest.json | cut -d' ' -f1 > "$RUNNER_TEMP/build-id"
           echo "$GITHUB_SHA" >> "$RUNNER_TEMP/build-id"
           status=$(curl --retry 3 -sSL -o "$RUNNER_TEMP/previous" -w '%{http_code}' "${PAGES_URL%/}/build-id")
-          case "$status" in 200|404) ;; *) exit 1 ;; esac
+          case "$status" in
+            200|404) ;;
+            *) echo "::error::Could not read the published build-id (HTTP $status)."; exit 1 ;;
+          esac
           if [[ "$GITHUB_EVENT_NAME" == schedule && "$status" == 200 ]] && cmp -s "$RUNNER_TEMP/build-id" "$RUNNER_TEMP/previous"; then
             echo changed=false >> "$GITHUB_OUTPUT"
           else
             echo changed=true >> "$GITHUB_OUTPUT"
           fi
-      - if: steps.check.outputs.changed == 'true'
+      - name: Install Flatpak tooling
+        if: steps.check.outputs.changed == 'true'
         run: |
           sudo apt-get install -y flatpak flatpak-builder dbus-daemon
           # Allow bubblewrap namespaces on this ephemeral Ubuntu Actions runner.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      - if: steps.check.outputs.changed == 'true'
-        name: Sign and test remote
+      - name: Build, sign, and test the remote
+        if: steps.check.outputs.changed == 'true'
         env:
+          VERSION: ${{ steps.upstream.outputs.version }}
           PAGES_URL: ${{ steps.pages.outputs.base_url }}
           SIGNING_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
         run: |
           export GNUPGHOME=$(mktemp -d)
           trap 'gpgconf --kill all; rm -rf "$GNUPGHOME"' EXIT
-          if [[ -z "$SIGNING_KEY" ]]; then echo 'Set FLATPAK_GPG_PRIVATE_KEY (see README).' >&2; exit 1; fi
+          if [[ -z "$SIGNING_KEY" ]]; then
+            echo '::error::The FLATPAK_GPG_PRIVATE_KEY secret is not set. Run scripts/setup.sh (see "Host your own remote" in README).'
+            exit 1
+          fi
           gpg --batch --import <<< "$SIGNING_KEY"
           unset SIGNING_KEY
           dbus-run-session -- bash scripts/build.sh
-      - if: steps.check.outputs.changed == 'true'
+      - name: Upload the site
+        if: steps.check.outputs.changed == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
@@ -72,5 +83,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - id: deploy
+      - name: Deploy to GitHub Pages
+        id: deploy
         uses: actions/deploy-pages@v4

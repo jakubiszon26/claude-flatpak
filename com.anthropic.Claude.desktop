@@ -1,9 +1,23 @@
 [Desktop Entry]
 Type=Application
-Name=Claude Desktop
-Comment=Unofficial Flatpak for Claude Desktop
+Name=Claude
+GenericName=AI Assistant
+Comment=Desktop application for Claude.ai (unofficial Flatpak)
+Keywords=AI;Chat;Assistant;Claude;Code;LLM;
 Exec=claude-desktop %U
-Icon=applications-internet
+Icon=com.anthropic.Claude
 Terminal=false
-Categories=Network;
+StartupNotify=true
+StartupWMClass=com.anthropic.Claude
+SingleMainWindow=true
+Categories=Utility;Development;
 MimeType=x-scheme-handler/claude;
+Actions=NewChat;NewCode;
+
+[Desktop Action NewChat]
+Name=New Chat
+Exec=claude-desktop "claude://claude.ai/new?surface=chat&source=desktop_action"
+
+[Desktop Action NewCode]
+Name=New Claude Code Session
+Exec=claude-desktop "claude://code/new?source=desktop_action"

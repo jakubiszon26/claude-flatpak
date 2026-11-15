@@ -1,3 +1,7 @@
+# Packaging only: the manifest installs a launcher and helper scripts.
+# Claude Desktop itself is proprietary and is never part of the build. The CI
+# appends an extra-data source (see scripts/manifest.py), so Flatpak downloads
+# the package from Anthropic on the user's machine at install time.
 id: com.anthropic.Claude
 branch: stable
 runtime: org.freedesktop.Platform
@@ -7,6 +11,7 @@ base: org.electronjs.Electron2.BaseApp
 base-version: '25.08'
 command: claude-desktop
 finish-args:
+  # Claude Code works on your projects, wherever they live.
   - --filesystem=host
   - --share=network
   - --share=ipc
@@ -14,24 +19,37 @@ finish-args:
   - --socket=fallback-x11
   - --socket=pulseaudio
   - --device=dri
+  # Run host commands (git, gh, ...) through flatpak-spawn. See README.
+  - --talk-name=org.freedesktop.Flatpak
+  # Credential storage (GNOME Keyring, KWallet).
   - --talk-name=org.freedesktop.secrets
   - --talk-name=org.kde.kwalletd6
+  # Tray icon and notifications.
   - --talk-name=org.kde.StatusNotifierWatcher
   - --talk-name=org.freedesktop.Notifications
+  # Keep the machine awake during long-running tasks.
   - --talk-name=org.freedesktop.ScreenSaver
   - --talk-name=org.gnome.SessionManager
+  # apply_extra needs the runtime (bash, bsdtar) to unpack the download.
   - --metadata=Extra Data=NoRuntime=false
 modules:
-  - name: launcher
+  # scripts/manifest.py appends the extra-data source to the first module.
+  - name: claude-desktop
     buildsystem: simple
     build-commands:
       - install -Dm755 launcher /app/bin/claude-desktop
       - install -Dm755 apply_extra /app/bin/apply_extra
+      - install -Dm755 host-exec /app/libexec/claude-flatpak/host-exec
+      - install -Dm755 link-host-tools /app/libexec/claude-flatpak/link-host-tools
       - install -Dm644 com.anthropic.Claude.desktop /app/share/applications/com.anthropic.Claude.desktop
     sources:
       - type: file
         path: launcher
       - type: file
         path: apply_extra
+      - type: file
+        path: host-exec
+      - type: file
+        path: link-host-tools
       - type: file
         path: com.anthropic.Claude.desktop

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs the host command this file is symlinked as, outside the sandbox.
+# --watch-bus stops the host process when the app exits.
+exec flatpak-spawn --host --watch-bus "${0##*/}" "$@"

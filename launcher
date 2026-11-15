@@ -1,3 +1,19 @@
 #!/bin/sh
+# Entry point of the Flatpak (installed as /app/bin/claude-desktop).
 export TMPDIR="${XDG_RUNTIME_DIR}/app/${FLATPAK_ID}"
-exec zypak-wrapper /app/extra/claude-desktop/claude-desktop "$@"
+
+app=/app/extra/claude-desktop/claude-desktop
+if [ ! -x "$app" ]; then
+  echo "Claude Desktop is not unpacked. Repair the installation with:" >&2
+  echo "  flatpak repair --user && flatpak update --user ${FLATPAK_ID}" >&2
+  exit 1
+fi
+
+# Make commands installed on the host (git, gh, podman, ...) available to
+# Claude Code. Prints nothing when host access has been revoked.
+if host_bin=$(/app/libexec/claude-flatpak/link-host-tools 2>/dev/null) && [ -n "$host_bin" ]; then
+  PATH="${PATH}:${host_bin}"
+  export PATH
+fi
+
+exec zypak-wrapper "$app" "$@"
